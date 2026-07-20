@@ -1,0 +1,28 @@
+version: '3.9'
+services:
+  server:
+    build: . 
+    image: mywatchcalendar-server:latest
+    ports:
+      - '8100:3000'
+    env_file:
+      - .env
+    depends_on:
+      - postgres
+      - redis-bull
+    restart: unless-stopped
+  postgres:
+    image: postgres:18
+    environment:
+      POSTGRES_PASSWORD: postgres
+    #ports:
+    #  - "5432:5432"
+    volumes:
+      - ./postgres:/var/lib/postgresql
+  redis-bull:
+    image: redis:latest
+    #ports:
+    #  - '6390:6379'
+    volumes:
+      - ./redis:/data
+    restart: unless-stopped
