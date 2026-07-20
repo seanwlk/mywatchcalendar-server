@@ -30,7 +30,7 @@ ENV NPM_CONFIG_UPDATE_NOTIFIER=false
 
 WORKDIR /usr/src/app
 
-RUN apk add --no-cache openssl
+RUN apk add --no-cache openssl curl unzip
 
 COPY package*.json ./
 COPY prisma ./prisma/
