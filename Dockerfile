@@ -41,6 +41,11 @@ COPY --from=builder /usr/src/app/dist ./dist
 COPY --from=builder /usr/src/app/node_modules/@prisma ./node_modules/@prisma
 COPY --from=builder /usr/src/app/node_modules/.prisma ./node_modules/.prisma
 
+COPY entrypoint.sh ./
+RUN chmod +x ./entrypoint.sh
+
 EXPOSE 3000
+
+ENTRYPOINT ["./entrypoint.sh"]
 
 CMD ["npm", "run", "start:prod"]
