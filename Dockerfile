@@ -12,6 +12,7 @@ WORKDIR /usr/src/app
 RUN apk add --no-cache openssl
 
 COPY package*.json ./
+COPY prisma.config.ts ./
 COPY prisma ./prisma/
 
 RUN npm ci --dangerously-allow-all-scripts
@@ -30,9 +31,10 @@ ENV NPM_CONFIG_UPDATE_NOTIFIER=false
 
 WORKDIR /usr/src/app
 
-RUN apk add --no-cache openssl
+RUN apk add --no-cache openssl curl unzip
 
 COPY package*.json ./
+COPY prisma.config.ts ./
 COPY prisma ./prisma/
 
 RUN npm ci --omit=dev --dangerously-allow-all-scripts
