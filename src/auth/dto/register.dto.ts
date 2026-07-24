@@ -6,7 +6,7 @@ export class RegisterDto {
   username: string = '';
 
   @IsString()
-  @MinLength(6)
+  @MinLength(8)
   password: string = '';
 
   @IsString()

@@ -11,6 +11,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { SeriesModule } from './series/series.module';
 import { UserModule } from './user/user.module';
 import { JobsModule } from './jobs/jobs.module';
+import { AdminModule } from "./admin/admin.module";
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { JobsModule } from './jobs/jobs.module';
     SeriesModule,
     UserModule,
     JobsModule,
+    AdminModule,
   ],
   controllers: [AppController],
   providers: [

@@ -1,7 +1,8 @@
-import { ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
+import { ExecutionContext, Injectable, UnauthorizedException, ForbiddenException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { AuthGuard } from '@nestjs/passport';
 import { IS_PUBLIC_KEY } from './public.decorator';
+import { IS_ADMIN_KEY } from '../admin/admin.decorator';
 
 @Injectable()
 export class JwtAuthGuard extends AuthGuard('jwt') {
@@ -22,10 +23,20 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     return super.canActivate(context);
   }
 
-  handleRequest(err: any, user: any) {
+  handleRequest(err: any, user: any, info: any, context: ExecutionContext) {
     if (err || !user) {
       throw err || new UnauthorizedException();
     }
+
+    const requireAdmin = this.reflector.getAllAndOverride<boolean>(IS_ADMIN_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
+
+    if (requireAdmin && !user.isAdmin) {
+      throw new ForbiddenException('Access denied. Administrator privileges required.');
+    }
+
     return user;
   }
 }
