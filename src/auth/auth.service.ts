@@ -108,6 +108,21 @@ export class AuthService {
     return { success: true };
   }
 
+  async changePassword(userId: string, newPassword: string) {
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash },
+    });
+
+    await this.prisma.refreshTokenSession.deleteMany({
+      where: { userId },
+    });
+
+    return { message: 'Password updated successfully' };
+  }
+
   async me(userId: string) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     return this.sanitizeUser(user);

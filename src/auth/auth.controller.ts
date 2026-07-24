@@ -4,6 +4,7 @@ import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { LogoutDto } from './dto/logout.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import { Public } from './public.decorator';
 
 @Controller('auth')
@@ -32,6 +33,11 @@ export class AuthController {
   @Post('logout')
   async logout(@Body() dto: LogoutDto) {
     return this.authService.logout(dto);
+  }
+
+  @Post('change-password')
+  async changePassword(@Req() req: any, @Body() dto: ChangePasswordDto) {
+    return this.authService.changePassword(req.user.id, dto.newPassword);
   }
 
   @Get('me')
