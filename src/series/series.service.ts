@@ -58,6 +58,7 @@ export class SeriesService {
         overview: episode.series.overview,
         posterUrl: episode.series.posterUrl,
         releaseDate: episode.series.releaseDate,
+        status: episode.series.status,
         latestEpisode: {
           id: episode.id,
           seasonNumber: episode.seasonNumber,
@@ -138,6 +139,7 @@ export class SeriesService {
           overview: episode.series.overview,
           posterUrl: episode.series.posterUrl,
           releaseDate: episode.series.releaseDate,
+          status: episode.series.status,
           latestEpisode: {
             id: episode.id,
             seasonNumber: episode.seasonNumber,
@@ -177,6 +179,7 @@ export class SeriesService {
           posterUrl: true,
           overview: true,
           externalIds: true,
+          status: true,
           followers: {
             where: { userId: userId },
             select: { id: true },
@@ -206,6 +209,7 @@ export class SeriesService {
       overview: series.overview,
       releaseDate: series.releaseDate,
       posterUrl: series.posterUrl,
+      status: series.status,
       isFollowed: series.followers.length > 0,
     }));
 
@@ -217,6 +221,7 @@ export class SeriesService {
         overview: tmdbItem.overview,
         releaseDate: tmdbItem.releaseDate,
         posterUrl: tmdbItem.posterUrl,
+        status: tmdbItem.status,
         isFollowed: false,
       }));
     
@@ -339,6 +344,7 @@ export class SeriesService {
       overview: series.overview,
       posterUrl: series.posterUrl,
       releaseDate: series.releaseDate,
+      status: series.status,
       isFollowed: followRecord !== null,
       isDropped: followRecord?.status === 'DROPPED',
       seasons: Array.from(seasonsMap.values()),
@@ -362,6 +368,7 @@ export class SeriesService {
     seriesTitle: episode.series.title,
     overview: episode.series.overview,
     posterUrl: episode.series.posterUrl,
+    status: episode.series.status,
     releaseDate: episode.series.releaseDate,
     episode: {
       id: episode.id,
@@ -418,6 +425,7 @@ export class SeriesService {
       seriesTitle: nextEpisode.series.title,
       overview: nextEpisode.series.overview,
       posterUrl: nextEpisode.series.posterUrl,
+      status: nextEpisode.series.status,
       releaseDate: nextEpisode.series.releaseDate,
       latestEpisode: {
         id: nextEpisode.id,
