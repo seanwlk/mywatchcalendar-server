@@ -1,28 +1,44 @@
-version: '3.9'
 services:
   server:
-    build: . 
-    image: mywatchcalendar-server:latest
+    image: ghcr.io/seanwlk/mywatchcalendar-server:latest
     ports:
-      - '8100:3000'
+      - "8100:3000"
     env_file:
       - .env
     depends_on:
-      - postgres
-      - redis-bull
+      postgres:
+        condition: service_healthy
+      redis-bull:
+        condition: service_healthy
     restart: unless-stopped
+
   postgres:
     image: postgres:18
     environment:
+      POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-    #ports:
-    #  - "5432:5432"
+      POSTGRES_DB: mywatchcalendar
     volumes:
-      - ./postgres:/var/lib/postgresql
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
   redis-bull:
     image: redis:latest
-    #ports:
-    #  - '6390:6379'
+    command: redis-server --loglevel warning
     volumes:
-      - ./redis:/data
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
     restart: unless-stopped
+
+volumes:
+  postgres-data:
+  redis-data:
