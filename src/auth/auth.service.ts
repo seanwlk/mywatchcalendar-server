@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException, BadRequestException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { randomBytes } from 'crypto';
@@ -17,6 +17,16 @@ export class AuthService {
   ) {}
 
   async register(dto: RegisterDto) {
+    const userCount = await this.prisma.user.count();
+    const isFirstUser = userCount === 0;
+
+    if (!isFirstUser) {
+      const allowRegistration = this.configService.get<string>('ALLOW_USER_REGISTRATION', 'false');
+      if (allowRegistration === 'false') {
+        throw new ForbiddenException('User registration is currently disabled.');
+      }
+    }
+
     const existing = await this.prisma.user.findUnique({ where: { username: dto.username } });
     if (existing) {
       throw new BadRequestException('Username already registered');
@@ -24,7 +34,12 @@ export class AuthService {
 
     const passwordHash = await bcrypt.hash(dto.password, 10);
     const user = await this.prisma.user.create({
-      data: { username: dto.username, name: dto.name, passwordHash },
+      data: { 
+        username: dto.username, 
+        name: dto.name, 
+        passwordHash,
+        isAdmin: isFirstUser,
+      },
     });
 
     const tokens = await this.issueTokens(user.id, user.username, user.isAdmin);
