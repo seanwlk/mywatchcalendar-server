@@ -164,6 +164,65 @@ export class SeriesService {
     };
   }
 
+  async getFollowed(userId: string, page: number, pageSize: number) {
+    const skip = (page - 1) * pageSize;
+
+    const [follows, total] = await Promise.all([
+      this.prisma.followedSeries.findMany({
+        where: { userId },
+        include: { series: true },
+        orderBy: { updatedAt: 'desc' },
+        skip,
+        take: pageSize,
+      }),
+      this.prisma.followedSeries.count({ where: { userId } }),
+    ]);
+
+    const items = await Promise.all(
+      follows.map(async (follow) => {
+        
+        const totalEpisodes = await this.prisma.episode.count({
+          where: {
+            seriesId: follow.seriesId,
+            seasonNumber: { not: 0 },
+          },
+        });
+
+        const watchedEpisodes = await this.prisma.watchProgress.count({
+          where: {
+            userId,
+            episode: {
+              seriesId: follow.seriesId,
+              seasonNumber: { not: 0 },
+            },
+          },
+        });
+
+        return {
+          id: follow.series.id,
+          title: follow.series.title,
+          overview: follow.series.overview,
+          posterUrl: follow.series.posterUrl,
+          releaseDate: follow.series.releaseDate,
+          status: follow.series.status,
+          isDropped: follow.status === 'DROPPED',
+          progress: {
+            total: totalEpisodes,
+            watched: watchedEpisodes,
+          },
+        };
+      })
+    );
+
+    return {
+      items,
+      page,
+      pageSize,
+      total,
+      hasMore: page * pageSize < total,
+    };
+  }
+
   async search(userId: string, query: string, page: number, pageSize: number) {
     const skip = (page - 1) * pageSize;
 

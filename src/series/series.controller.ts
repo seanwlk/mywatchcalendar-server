@@ -20,6 +20,11 @@ export class SeriesController {
     return this.seriesService.getCalendar(req.user.id, query.page ?? 1, query.pageSize ?? 30, direction);
   }
 
+  @Get('followed')
+  async getFollowed(@Req() req: any, @Query() query: SeriesPaginationQueryDto) {
+    return this.seriesService.getFollowed(req.user.id, query.page ?? 1, query.pageSize ?? 30);
+  }
+  
   @Get('search')
   async search(@Req() req: any, @Query('q') q: string, @Query() query: SeriesPaginationQueryDto) {
     return this.seriesService.search(req.user.id, q ?? '', query.page ?? 1, query.pageSize ?? 30);
