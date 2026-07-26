@@ -13,8 +13,8 @@ export class SeriesSyncProducer {
     private prisma: PrismaService,
   ) {}
 
-  async syncSingleSeries(tmdbId: number, requestUser?: string ) {
-    await this.syncQueue.add('series-sync', { tmdbId, requestUser});
+  async syncSingleSeries(tmdbId: number, requestUser?: string) {
+    await this.syncQueue.add('series-sync', { tmdbId, requestUser });
     this.logger.log(`Added series ${tmdbId} to sync queue`);
   }
 
@@ -22,8 +22,8 @@ export class SeriesSyncProducer {
   @Cron(CronExpression.EVERY_1ST_DAY_OF_MONTH_AT_MIDNIGHT)
   async fullMetadataSync() {
     this.logger.log('Starting monthly series update cron...');
-    
-    const allSeries : [{ tmdbId: number }] = await this.prisma.$queryRaw`
+
+    const allSeries: [{ tmdbId: number }] = await this.prisma.$queryRaw`
       SELECT ("externalIds"->>'tmdb')::int as "tmdbId" 
       FROM "Series"
     `;
@@ -37,20 +37,25 @@ export class SeriesSyncProducer {
   @Cron(CronExpression.EVERY_DAY_AT_2AM)
   async upcomingMetadataSync() {
     this.logger.log('Starting upcoming update cron...');
-    
-    const allSeries : [{ tmdbId: number }] = await this.prisma.$queryRaw`
-      SELECT DISTINCT (s."externalIds"->>'tmdb')::int as "tmdbId" ,s.title 
-        FROM "Series" s
-        LEFT JOIN "FollowedSeries" t ON t."seriesId" = s.id 
-        LEFT JOIN "Episode" e ON e."seriesId" = s.id 
-        WHERE
-        	(e."airDate" is null  OR e."airDate" >= current_date)
-			    AND t.status != 'DROPPED'
-	
+
+    const activeSeries: [{ tmdbId: number }] = await this.prisma.$queryRaw`
+      SELECT DISTINCT (s."externalIds"->>'tmdb')::int as "tmdbId"
+      FROM "Series" s
+      JOIN "FollowedSeries" fs ON fs."seriesId" = s.id 
+      LEFT JOIN "Episode" e ON e."seriesId" = s.id 
+      WHERE fs.status != 'DROPPED'
+        AND (
+          s.in_prod = true 
+          OR s.status IN ('Returning Series', 'In Production', 'Planned')
+          OR e."airDate" IS NULL  
+          OR e."airDate" >= (CURRENT_DATE - INTERVAL '7 days')
+        )
     `;
 
-    for (const series of allSeries) {
-      await this.syncQueue.add('upcoming-sync', { tmdbId: series.tmdbId });
+    for (const series of activeSeries) {
+      if (series.tmdbId) {
+        await this.syncQueue.add('upcoming-sync', { tmdbId: series.tmdbId });
+      }
     }
   }
 }
