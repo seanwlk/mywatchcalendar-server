@@ -102,6 +102,12 @@ export class AdminController {
     return { message: 'Full series metadata sync job has been added to the queue.' };
   }
 
+  @Post('sync/upcoming')
+  async syncUpcomingSeries() {
+    await this.seriesSyncProducer.upcomingMetadataSync();
+    return { message: 'Upcoming series metadata sync job has been added to the queue.' };
+  }
+
   @Post('sync/:tmdbId')
   async syncSingleSeries(@Param('tmdbId', ParseIntPipe) tmdbId: number) {
     await this.seriesSyncProducer.syncSingleSeries(tmdbId);
