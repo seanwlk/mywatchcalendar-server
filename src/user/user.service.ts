@@ -8,8 +8,7 @@ export class UserService {
   async getUserStats(userId: string) {
     const totalSeries = await this.prisma.followedSeries.count({
       where: { 
-        userId, 
-        status: { not: 'DROPPED' } 
+        userId
       },
     });
 
