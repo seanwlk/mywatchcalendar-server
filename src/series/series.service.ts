@@ -400,6 +400,7 @@ export class SeriesService {
     return {
       id: series.id,
       title: series.title,
+      externalIds: series.externalIds,
       overview: series.overview,
       posterUrl: series.posterUrl,
       releaseDate: series.releaseDate,
