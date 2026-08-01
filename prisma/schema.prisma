@@ -59,7 +59,7 @@ model Series {
   posterUrl   String?
   in_prod     Boolean?
   status      String?
-  releaseDate DateTime
+  releaseDate DateTime?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

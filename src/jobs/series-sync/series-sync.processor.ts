@@ -99,6 +99,7 @@ export class SeriesSyncProcessor extends WorkerHost {
         },
       },
     });
+    let releaseDate = seriesData.firstAirDate === '' ? null : new Date(seriesData.firstAirDate);
 
     if (series) {
       series = await this.prisma.series.update({
@@ -108,6 +109,7 @@ export class SeriesSyncProcessor extends WorkerHost {
           title: seriesData.title,
           overview: seriesData.overview,
           posterUrl: seriesData.posterUrl,
+          releaseDate: releaseDate,
           in_prod: seriesData.in_production,
           status: seriesData.status,
         },
@@ -119,7 +121,7 @@ export class SeriesSyncProcessor extends WorkerHost {
           externalIds: seriesData.externalIds,
           overview: seriesData.overview,
           posterUrl: seriesData.posterUrl,
-          releaseDate: new Date(seriesData.firstAirDate),
+          releaseDate: releaseDate,
           in_prod: seriesData.in_production,
           status: seriesData.status,
         },
