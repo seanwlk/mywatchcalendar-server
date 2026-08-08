@@ -34,4 +34,35 @@ export class UserService {
       totalTimeMinutes,
     };
   }
+
+  async getUserHistory(userId: string, start: Date, end: Date) {
+    const records = await this.prisma.watchProgress.findMany({
+      where: {
+        userId,
+        watchedAt: { gte: start, lte: end },
+      },
+      select: {
+        watchedAt: true,
+        episode: {
+          select: { runtime: true },
+        },
+      },
+      orderBy: { watchedAt: 'desc' },
+    });
+
+    const olderRecordsCount = await this.prisma.watchProgress.count({
+      where: {
+        userId,
+        watchedAt: { lt: start },
+      },
+    });
+
+    return {
+      hasMore: olderRecordsCount > 0,
+      records: records.map((r) => ({
+        date: r.watchedAt.toISOString(),
+        runtime: r.episode?.runtime || 0,
+      })),
+    };
+  }
 }

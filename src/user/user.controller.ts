@@ -1,4 +1,4 @@
-import { Controller, Get, Req, UseGuards } from '@nestjs/common';
+import { Controller, Get, Query, Req, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { UserService } from './user.service';
 
@@ -10,5 +10,14 @@ export class UserController {
   @Get('stats')
   async getStats(@Req() req: any) {
     return this.userService.getUserStats(req.user.id);
+  }
+
+  @Get('history')
+  async getHistory(
+    @Req() req: any,
+    @Query('start') start: string,
+    @Query('end') end: string,
+  ) {
+    return this.userService.getUserHistory(req.user.id, new Date(start), new Date(end));
   }
 }
