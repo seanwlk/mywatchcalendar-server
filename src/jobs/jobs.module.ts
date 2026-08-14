@@ -12,6 +12,11 @@ import { SeriesSyncProducer } from './series-sync/series-sync.producer';
 import { SeriesSyncProcessor } from './series-sync/series-sync.processor';
 import { TokenCleanupProducer } from './cleanup/token-cleanup.producer';
 import { TokenCleanupProcessor } from './cleanup/token-cleanup.processor';
+try {
+  require('dotenv').config();
+} catch {}
+
+const isBullBoardEnabled = process.env.ENABLE_BULLBOARD === 'true';
 
 const REGISTERED_QUEUES = [
   'series-sync',
@@ -31,34 +36,38 @@ const REGISTERED_QUEUES = [
         },
       }),
     }),
-    BullBoardModule.forRootAsync({
-      imports: [ConfigModule],
-      inject: [ConfigService],
-      useFactory: (configService: ConfigService) => {
-        const user = configService.get<string>('BULLBOARD_USER') ?? 'admin';
-        const pass = configService.get<string>('BULLBOARD_PASSWORD') ?? 'admin';
-
-        return {
-          route: '/queues',
-          adapter: ExpressAdapter,
-          middleware: basicAuth({
-            users: {
-              [user]: pass,
-            },
-            challenge: true,
-          }),
-        };
-      },
-    }),
     ...REGISTERED_QUEUES.map((queueName) => 
       BullModule.registerQueue({ name: queueName })
     ),
-    ...REGISTERED_QUEUES.map((queueName) =>
-      BullBoardModule.forFeature({
-        name: queueName,
-        adapter: BullMQAdapter,
-      })
-    ),
+    ...(isBullBoardEnabled
+      ? [
+          BullBoardModule.forRootAsync({
+            imports: [ConfigModule],
+            inject: [ConfigService],
+            useFactory: (configService: ConfigService) => {
+              const user = configService.get<string>('BULLBOARD_USER') ?? 'admin';
+              const pass = configService.get<string>('BULLBOARD_PASSWORD') ?? 'admin';
+
+              return {
+                route: '/queues',
+                adapter: ExpressAdapter,
+                middleware: basicAuth({
+                  users: {
+                    [user]: pass,
+                  },
+                  challenge: true,
+                }),
+              };
+            },
+          }),
+          ...REGISTERED_QUEUES.map((queueName) =>
+            BullBoardModule.forFeature({
+              name: queueName,
+              adapter: BullMQAdapter,
+            })
+          ),
+        ]
+      : []),
     PrismaModule,
     TmdbModule,
   ],

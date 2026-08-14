@@ -17,9 +17,10 @@ Here are the required environment variables and their reference values:
 | `JWT_ACCESS_EXPIRES_IN` | `1h` |
 | `JWT_REFRESH_EXPIRES_IN` | `7d` |
 | `ALLOW_USER_REGISTRATION` | `true / false` (This variable blocks the registration for new users) |
-| `TMDB_API_KEY` | Your TMDB API key (`API_KEY`) |
+| `TMDB_API_KEY` | Your TMDB API key (You can Google to find out how to obtain one) |
 | `REDIS_HOST` | `redis-bull` (Must match the Docker service name if using Compose) |
 | `REDIS_PORT` | `6379` |
+| `ENABLE_BULLBOARD` | Allow user to disable bullboard `/queues` (default `true`) |
 | `BULLBOARD_USER` | Username for the BullMQ dashboard (e.g., `admin`) |
 | `BULLBOARD_PASSWORD` | Password for the BullMQ dashboard |
 | `WEB_FRONTEND_BUILD` | URL to the frontend build zip (e.g., `https://github.com/seanwlk/mywatchcalendar-app/releases/latest/download/web-release.zip`) |
