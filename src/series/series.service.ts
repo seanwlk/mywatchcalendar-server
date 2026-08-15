@@ -70,6 +70,7 @@ export class SeriesService {
           episodesLeft: episodes.filter((e) => e.seriesId === episode.seriesId && e.airDate && e.airDate <= new Date() && e.id !== episode.id).length,
         },
         watched: false,
+        rewatchCount: 0,
       }));
 
     const total = latestUnwatchedBySeries.size;
@@ -127,33 +128,39 @@ export class SeriesService {
       this.prisma.episode.count({ where: { airDate: dateFilter, seriesId: { in: seriesIds } } }),
     ]);
 
-    const enriched = await Promise.all(
-      items.map(async (episode) => {
-        const watched = await this.prisma.watchProgress.findUnique({
-          where: { userId_episodeId: { userId, episodeId: episode.id } },
-        });
-        
-        return {
-          seriesId: episode.series.id,
-          seriesTitle: episode.series.title,
-          overview: episode.series.overview,
-          posterUrl: episode.series.posterUrl,
-          releaseDate: episode.series.releaseDate,
-          status: episode.series.status,
-          latestEpisode: {
-            id: episode.id,
-            seasonNumber: episode.seasonNumber,
-            episodeNumber: episode.episodeNumber,
-            title: episode.title,
-            posterUrl: episode.posterUrl,
-            airDate: episode.airDate,
-            overview: episode.overview,
-          },
-          watched: Boolean(watched),
-          isFollowed: true,
-        };
-      }),
-    );
+    const episodeIds = items.map((e) => e.id);
+    const watchRecords = await this.prisma.watchProgress.groupBy({
+      by: ['episodeId'],
+      where: { userId, episodeId: { in: episodeIds } },
+      _count: { _all: true },
+    });
+
+    const watchCounts = new Map(watchRecords.map((wr) => [wr.episodeId, wr._count._all]));
+
+    const enriched = items.map((episode) => {
+      const count = watchCounts.get(episode.id) || 0;
+      
+      return {
+        seriesId: episode.series.id,
+        seriesTitle: episode.series.title,
+        overview: episode.series.overview,
+        posterUrl: episode.series.posterUrl,
+        releaseDate: episode.series.releaseDate,
+        status: episode.series.status,
+        latestEpisode: {
+          id: episode.id,
+          seasonNumber: episode.seasonNumber,
+          episodeNumber: episode.episodeNumber,
+          title: episode.title,
+          posterUrl: episode.posterUrl,
+          airDate: episode.airDate,
+          overview: episode.overview,
+        },
+        watched: count > 0,
+        rewatchCount: count,
+        isFollowed: true,
+      };
+    });
 
     return {
       items: enriched,
@@ -188,7 +195,8 @@ export class SeriesService {
           },
         });
 
-        const watchedEpisodes = await this.prisma.watchProgress.count({
+        const watchedGroup = await this.prisma.watchProgress.groupBy({
+          by: ['episodeId'],
           where: {
             userId,
             episode: {
@@ -208,7 +216,7 @@ export class SeriesService {
           isDropped: follow.status === 'DROPPED',
           progress: {
             total: totalEpisodes,
-            watched: watchedEpisodes,
+            watched: watchedGroup.length,
           },
         };
       })
@@ -350,13 +358,14 @@ export class SeriesService {
 
     if (!series) return null;
 
-    const [progress, followRecord] = await Promise.all([
-      this.prisma.watchProgress.findMany({
+    const [watchRecords, followRecord] = await Promise.all([
+      this.prisma.watchProgress.groupBy({
+        by: ['episodeId'],
         where: {
           userId,
           episode: { seriesId },
         },
-        select: { episodeId: true },
+        _count: { _all: true },
       }),
       this.prisma.followedSeries.findFirst({
         where: isTmdb
@@ -374,7 +383,7 @@ export class SeriesService {
       })
     ]);
 
-    const watchedIds = new Set(progress.map((p) => p.episodeId));
+    const watchCounts = new Map(watchRecords.map((wr) => [wr.episodeId, wr._count._all]));
 
     const seasonsMap = new Map();
     for (const episode of series.episodes) {
@@ -385,6 +394,8 @@ export class SeriesService {
         });
       }
       
+      const count = watchCounts.get(episode.id) || 0;
+
       seasonsMap.get(episode.seasonNumber).episodes.push({
         id: episode.id,
         seasonNumber: episode.seasonNumber,
@@ -393,7 +404,8 @@ export class SeriesService {
         posterUrl: episode.posterUrl,
         airDate: episode.airDate,
         overview: episode.overview,
-        watched: watchedIds.has(episode.id),
+        watched: count > 0,
+        rewatchCount: count,
       });
     }
 
@@ -412,36 +424,42 @@ export class SeriesService {
   }
 
   async getEpisodeDetails(userId: string, episodeId: string) {
-  const episode = await this.prisma.episode.findUnique({
-    where: { id: episodeId },
-    include: { series: true },
-  });
+    const episode = await this.prisma.episode.findUnique({
+      where: { id: episodeId },
+      include: { series: true },
+    });
 
-  if (!episode) return null;
+    if (!episode) return null;
 
-  const watched = await this.prisma.watchProgress.findUnique({
-    where: { userId_episodeId: { userId, episodeId } },
-  });
+    const watchRecords = await this.prisma.watchProgress.findMany({
+      where: { userId, episodeId },
+      orderBy: { watchedAt: 'desc' },
+    });
 
-  return {
-    seriesId: episode.series.id,
-    seriesTitle: episode.series.title,
-    overview: episode.series.overview,
-    posterUrl: episode.series.posterUrl,
-    status: episode.series.status,
-    releaseDate: episode.series.releaseDate,
-    episode: {
-      id: episode.id,
-      seasonNumber: episode.seasonNumber,
-      episodeNumber: episode.episodeNumber,
-      title: episode.title,
-      posterUrl: episode.posterUrl,
-      airDate: episode.airDate,
-      overview: episode.overview,
-    },
-    watched: Boolean(watched),
-  };
-}
+    return {
+      seriesId: episode.series.id,
+      seriesTitle: episode.series.title,
+      overview: episode.series.overview,
+      posterUrl: episode.series.posterUrl,
+      status: episode.series.status,
+      releaseDate: episode.series.releaseDate,
+      episode: {
+        id: episode.id,
+        seasonNumber: episode.seasonNumber,
+        episodeNumber: episode.episodeNumber,
+        title: episode.title,
+        posterUrl: episode.posterUrl,
+        airDate: episode.airDate,
+        overview: episode.overview,
+      },
+      watched: watchRecords.length > 0,
+      rewatchCount: watchRecords.length,
+      history: watchRecords.map((wr) => ({
+        id: wr.id,
+        watchedAt: wr.watchedAt,
+      })),
+    };
+  }
 
   async getNextUnwatchedEpisode(userId: string, seriesId: string) {
     const followRecord = await this.prisma.followedSeries.findUnique({
@@ -498,6 +516,7 @@ export class SeriesService {
         episodesLeft: remainingCount,
       },
       watched: false,
+      rewatchCount: 0,
     };
   }
 
@@ -519,22 +538,33 @@ export class SeriesService {
     episodeId = isTmdb ? episode.id : episodeId;
     const watchDate = watchedAt ? new Date(watchedAt) : new Date();
 
-    await this.prisma.watchProgress.upsert({
-      where: { userId_episodeId: { userId, episodeId } },
-      update: { watchedAt: watchDate },
-      create: { userId, episodeId, watchedAt: watchDate },
+    await this.prisma.watchProgress.create({
+      data: { userId, episodeId, watchedAt: watchDate },
     });
 
     return { success: true };
   }
 
-  async unmarkWatched(userId: string, episodeId: string) {
-    const existing = await this.prisma.watchProgress.findUnique({ where: { userId_episodeId: { userId, episodeId } } });
-    if (!existing) {
-      return { success: true };
+  async unmarkWatched(userId: string, episodeId: string, progressId?: string) {
+    if (progressId) {
+      await this.prisma.watchProgress.delete({ 
+        where: { id: progressId } 
+      });
+    } else {
+      // This is to allow the user to delete the most recent rewatch
+      // instead of just blindly deleting all, possible rollback in the 
+      // future if found problematic...
+      const mostRecent = await this.prisma.watchProgress.findFirst({
+        where: { userId, episodeId },
+        orderBy: { watchedAt: 'desc' }
+      });
+      
+      if (mostRecent) {
+        await this.prisma.watchProgress.delete({ 
+          where: { id: mostRecent.id } 
+        });
+      }
     }
-
-    await this.prisma.watchProgress.delete({ where: { id: existing.id } });
     return { success: true };
   }
 }

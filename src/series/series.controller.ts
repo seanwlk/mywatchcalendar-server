@@ -72,7 +72,7 @@ export class EpisodeController {
   }
 
   @Delete(':id/mark-watched')
-  async unmarkWatched(@Req() req: any, @Param('id') id: string) {
-    return this.seriesService.unmarkWatched(req.user.id, id);
+  async unmarkWatched(@Req() req: any, @Param('id') id: string, @Query('progressId') progressId?: string) {
+    return this.seriesService.unmarkWatched(req.user.id, id, progressId);
   }
 }

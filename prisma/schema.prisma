@@ -99,5 +99,6 @@ model WatchProgress {
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   episode Episode @relation(fields: [episodeId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, episodeId])
+  @@index([userId, episodeId])
+  @@index([userId, watchedAt])
 }

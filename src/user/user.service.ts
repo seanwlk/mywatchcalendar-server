@@ -12,9 +12,13 @@ export class UserService {
       },
     });
 
-    const totalEpisodesWatched = await this.prisma.watchProgress.count({
+    const uniqueWatched = await this.prisma.watchProgress.groupBy({
+      by: ['episodeId'],
       where: { userId },
     });
+    
+    const totalEpisodesWatched = uniqueWatched.length;
+
     const progressRecords = await this.prisma.watchProgress.findMany({
       where: { userId },
       select: {
