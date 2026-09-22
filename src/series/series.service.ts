@@ -261,13 +261,16 @@ export class SeriesService {
   }
 
   async search(userId: string, query: string, page: number, pageSize: number) {
-    const tmdbResults = await this.tmdbService.searchSeries(query, page);
+    const tmdbResponse = await this.tmdbService.searchSeries(query, page);
+
+    const tmdbResults = tmdbResponse?.results || [];
+    const tmdbTotal = tmdbResponse?.total || 0;
 
     if (!tmdbResults || tmdbResults.length === 0) {
       return { items: [], page, pageSize, total: 0, hasMore: false };
     }
 
-    const tmdbIds = tmdbResults.map((r) => r.tmdbId);
+    const tmdbIds = tmdbResults.map((r: any) => r.tmdbId);
 
     const localSeries = await this.prisma.series.findMany({
       where: {
@@ -296,7 +299,7 @@ export class SeriesService {
       }
     }
 
-    const enrichedItems = tmdbResults.map((tmdbItem) => {
+    const enrichedItems = tmdbResults.map((tmdbItem: any) => {
       const localMatch = localSeriesMap.get(tmdbItem.tmdbId);
 
       return {
@@ -313,9 +316,9 @@ export class SeriesService {
     return {
       items: enrichedItems,
       page,
-      pageSize,
-      total: enrichedItems.length,
-      hasMore: tmdbResults.length > 0, 
+      pageSize: 20, // TMDB returns only a fixed page of 20 results
+      total: Math.max(tmdbTotal, enrichedItems.length),
+      hasMore: page * 20 < tmdbTotal, 
     };
   }
 

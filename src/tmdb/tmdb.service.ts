@@ -111,7 +111,7 @@ export class TmdbService {
       `/search/tv?query=${encodeURIComponent(query)}&page=${page}&language=en-US`
     );
     
-    return data.results.map((item: any) => ({
+    const results = data.results.map((item: any) => ({
       tmdbId: item.id,
       title: item.name,
       overview: item.overview,
@@ -119,6 +119,12 @@ export class TmdbService {
         ? `https://image.tmdb.org/t/p/w500${item.poster_path}` 
         : null,
       releaseDate: item.first_air_date ? new Date(item.first_air_date) : null,
+      status: 'Unknown',
     }));
+
+    return {
+      results,
+      total: data.total_results,
+    };
   }
 }
