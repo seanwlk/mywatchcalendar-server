@@ -42,6 +42,10 @@ const REGISTERED_QUEUES = [
             return Math.min(times * 1000, 10000); 
           },
         },
+        defaultJobOptions: {
+          removeOnComplete: 1500,
+          removeOnFail: 1000,
+        },
       }),
     }),
     ...REGISTERED_QUEUES.map((queueName) => 
