@@ -12,6 +12,8 @@ import { SeriesSyncProducer } from './series-sync/series-sync.producer';
 import { SeriesSyncProcessor } from './series-sync/series-sync.processor';
 import { TokenCleanupProducer } from './cleanup/token-cleanup.producer';
 import { TokenCleanupProcessor } from './cleanup/token-cleanup.processor';
+import { MediaCleanupProducer } from './cleanup/media-cleanup.producer';
+import { MediaCleanupProcessor } from './cleanup/media-cleanup.processor';
 try {
   require('dotenv').config();
 } catch {}
@@ -21,6 +23,7 @@ const isBullBoardEnabled = process.env.ENABLE_BULLBOARD === 'true';
 const REGISTERED_QUEUES = [
   'series-sync',
   'cleanup-sessions',
+  'cleanup-media',
 ];
 
 @Module({
@@ -81,6 +84,8 @@ const REGISTERED_QUEUES = [
     SeriesSyncProcessor,
     TokenCleanupProducer,
     TokenCleanupProcessor,
+    MediaCleanupProducer,
+    MediaCleanupProcessor,
   ],
   exports: [SeriesSyncProducer],
 })
