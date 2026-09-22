@@ -33,6 +33,11 @@ const REGISTERED_QUEUES = [
         connection: {
           host: configService.get<string>('REDIS_HOST'),
           port: configService.get<number>('REDIS_PORT'),
+          maxRetriesPerRequest: null,
+          retryStrategy: (times: number) => {
+            console.warn(`Redis disconnected. Retrying connection (attempt ${times})...`);
+            return Math.min(times * 1000, 10000); 
+          },
         },
       }),
     }),
