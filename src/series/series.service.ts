@@ -261,73 +261,61 @@ export class SeriesService {
   }
 
   async search(userId: string, query: string, page: number, pageSize: number) {
-    const skip = (page - 1) * pageSize;
+    const tmdbResults = await this.tmdbService.searchSeries(query, page);
 
-    const [items, total, tmdbResults] = await Promise.all([
-      this.prisma.series.findMany({
-        where: {
-          title: { contains: query, mode: 'insensitive' },
-        },
-        select: {
-          id: true,
-          title: true,
-          releaseDate: true,
-          posterUrl: true,
-          overview: true,
-          externalIds: true,
-          status: true,
-          followers: {
-            where: { userId: userId },
-            select: { id: true },
+    if (!tmdbResults || tmdbResults.length === 0) {
+      return { items: [], page, pageSize, total: 0, hasMore: false };
+    }
+
+    const tmdbIds = tmdbResults.map((r) => r.tmdbId);
+
+    const localSeries = await this.prisma.series.findMany({
+      where: {
+        OR: tmdbIds.map((id) => ({
+          externalIds: {
+            path: ['tmdb'],
+            equals: id,
           },
+        })),
+      },
+      select: {
+        id: true,
+        externalIds: true,
+        followers: {
+          where: { userId: userId },
+          select: { id: true },
         },
-        skip,
-        take: pageSize,
-        orderBy: { title: 'asc' },
-      }),
-      this.prisma.series.count({
-        where: {
-          title: { contains: query, mode: 'insensitive' },
-        },
-      }),
-      this.tmdbService.searchSeries(query, page)
-    ]);
+      },
+    });
 
-    const localTmdbIds = new Set(
-      items
-        .map((series) => (series.externalIds as any)?.tmdb)
-        .filter((id) => id != null)
-    );
+    const localSeriesMap = new Map();
+    for (const series of localSeries) {
+      const tmdbId = (series.externalIds as any)?.tmdb;
+      if (tmdbId) {
+        localSeriesMap.set(tmdbId, series);
+      }
+    }
 
-    const formattedItems = items.map((series) => ({
-      id: series.id,
-      title: series.title,
-      overview: series.overview,
-      releaseDate: series.releaseDate,
-      posterUrl: series.posterUrl,
-      status: series.status,
-      isFollowed: series.followers.length > 0,
-    }));
+    const enrichedItems = tmdbResults.map((tmdbItem) => {
+      const localMatch = localSeriesMap.get(tmdbItem.tmdbId);
 
-    const newTmdbItems = tmdbResults
-      .filter((tmdbItem) => !localTmdbIds.has(tmdbItem.tmdbId))
-      .map((tmdbItem) => ({
-        id: `tmdb_${tmdbItem.tmdbId}`,
+      return {
+        id: localMatch ? localMatch.id : `tmdb_${tmdbItem.tmdbId}`,
         title: tmdbItem.title,
         overview: tmdbItem.overview,
         releaseDate: tmdbItem.releaseDate,
         posterUrl: tmdbItem.posterUrl,
         status: tmdbItem.status,
-        isFollowed: false,
-      }));
-    
-    const combinedItems = [...formattedItems, ...newTmdbItems]
+        isFollowed: localMatch ? localMatch.followers.length > 0 : false,
+      };
+    });
+
     return {
-      items: combinedItems,
+      items: enrichedItems,
       page,
       pageSize,
-      total,
-      hasMore: page * pageSize < total,
+      total: enrichedItems.length,
+      hasMore: tmdbResults.length > 0, 
     };
   }
 
