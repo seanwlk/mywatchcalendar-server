@@ -43,37 +43,66 @@ export class SeriesService {
       orderBy: [{ seriesId: 'asc' }, { seasonNumber: 'asc' }, { episodeNumber: 'asc' }],
     });
 
-    const latestUnwatchedBySeries = new Map<string, (typeof episodes)[number]>();
+    const unwatchedStats = new Map<string, { nextEpisode: (typeof episodes)[0], count: number }>();
     for (const episode of episodes) {
-      if (!latestUnwatchedBySeries.has(episode.seriesId)) {
-        latestUnwatchedBySeries.set(episode.seriesId, episode);
+      if (!unwatchedStats.has(episode.seriesId)) {
+        unwatchedStats.set(episode.seriesId, { nextEpisode: episode, count: 1 });
+      } else {
+        unwatchedStats.get(episode.seriesId)!.count++;
       }
     }
 
-    const items = Array.from(latestUnwatchedBySeries.values())
-      .slice(skip, skip + pageSize)
-      .map((episode) => ({
-        seriesId: episode.series.id,
-        seriesTitle: episode.series.title,
-        overview: episode.series.overview,
-        posterUrl: episode.series.posterUrl,
-        releaseDate: episode.series.releaseDate,
-        status: episode.series.status,
+    const activeSeriesIds = Array.from(unwatchedStats.keys());
+    const lastWatchedMap = new Map<string, number>();
+
+    await Promise.all(
+      activeSeriesIds.map(async (seriesId) => {
+        const latest = await this.prisma.watchProgress.findFirst({
+          where: { userId, episode: { seriesId } },
+          orderBy: { watchedAt: 'desc' },
+          select: { watchedAt: true },
+        });
+        lastWatchedMap.set(seriesId, latest?.watchedAt.getTime() || 0);
+      })
+    );
+
+    const unsortedItems = Array.from(unwatchedStats.values()).map(({ nextEpisode, count }) => {
+      return {
+        seriesId: nextEpisode.series.id,
+        seriesTitle: nextEpisode.series.title,
+        overview: nextEpisode.series.overview,
+        posterUrl: nextEpisode.series.posterUrl,
+        releaseDate: nextEpisode.series.releaseDate,
+        status: nextEpisode.series.status,
         latestEpisode: {
-          id: episode.id,
-          seasonNumber: episode.seasonNumber,
-          episodeNumber: episode.episodeNumber,
-          title: episode.title,
-          posterUrl: episode.posterUrl,
-          airDate: episode.airDate,
-          overview: episode.overview,
-          episodesLeft: episodes.filter((e) => e.seriesId === episode.seriesId && e.airDate && e.airDate <= new Date() && e.id !== episode.id).length,
+          id: nextEpisode.id,
+          seasonNumber: nextEpisode.seasonNumber,
+          episodeNumber: nextEpisode.episodeNumber,
+          title: nextEpisode.title,
+          posterUrl: nextEpisode.posterUrl,
+          airDate: nextEpisode.airDate,
+          overview: nextEpisode.overview,
+          episodesLeft: count - 1,
         },
         watched: false,
         rewatchCount: 0,
-      }));
+        _lastWatchedAt: lastWatchedMap.get(nextEpisode.seriesId) || 0,
+      };
+    });
 
-    const total = latestUnwatchedBySeries.size;
+    unsortedItems.sort((a, b) => {
+      if (a.latestEpisode.episodesLeft !== b.latestEpisode.episodesLeft) {
+        return a.latestEpisode.episodesLeft - b.latestEpisode.episodesLeft;
+      }
+      return b._lastWatchedAt - a._lastWatchedAt;
+    });
+
+    const total = unsortedItems.length;
+
+    const items = unsortedItems.slice(skip, skip + pageSize).map((item) => {
+      const { _lastWatchedAt, ...cleanItem } = item;
+      return cleanItem;
+    });
 
     return {
       items,
